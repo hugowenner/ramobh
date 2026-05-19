@@ -1,0 +1,282 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================================
+// AUTH.JS v5 — Tabelas obrigatórias
+// ============================================================
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?
+  role          UserRole  @default(VIEWER)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts Account[]
+  sessions Session[]
+
+  @@map("users")
+}
+
+model Account {
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@id([identifier, token])
+  @@map("verification_tokens")
+}
+
+// ============================================================
+// MÓDULO: CLIENTS
+// ============================================================
+
+model Client {
+  id        String       @id @default(cuid())
+  name      String
+  cnpj      String?      @unique
+  segment   String?
+  status    ClientStatus @default(ACTIVE)
+  country   String       @default("BR")
+  state     String?
+  city      String?
+  notes     String?
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  deletedAt DateTime?
+
+  projects     Project[]
+  environments Environment[]
+  documents    Document[]
+
+  @@index([deletedAt, name])    // list query: WHERE deletedAt IS NULL ORDER BY name
+  @@index([deletedAt, status])  // filter by status
+  @@index([deletedAt, createdAt])
+  @@map("clients")
+}
+
+// ============================================================
+// MÓDULO: PROJECTS
+// ============================================================
+
+model Project {
+  id          String        @id @default(cuid())
+  name        String
+  description String?
+  type        ProjectType
+  status      ProjectStatus @default(PLANNING)
+  startDate   DateTime?
+  endDate     DateTime?
+  clientId    String
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  deletedAt   DateTime?
+
+  client       Client        @relation(fields: [clientId], references: [id])
+  environments Environment[]
+  documents    Document[]
+
+  @@index([clientId, deletedAt])
+  @@index([status, deletedAt])
+  @@index([deletedAt, createdAt]) // main list: WHERE deletedAt IS NULL ORDER BY createdAt DESC
+  @@map("projects")
+}
+
+// ============================================================
+// MÓDULO: ENVIRONMENTS
+// ============================================================
+
+model Environment {
+  id          String          @id @default(cuid())
+  name        String
+  type        EnvironmentType
+  description String?
+  clientId    String
+  projectId   String?
+  url         String?
+  version     String?
+  notes       String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  deletedAt   DateTime?
+
+  client    Client     @relation(fields: [clientId], references: [id])
+  project   Project?   @relation(fields: [projectId], references: [id])
+  documents Document[]
+
+  @@index([clientId, deletedAt])
+  @@index([projectId, deletedAt])
+  @@map("environments")
+}
+
+// ============================================================
+// MÓDULO: TEMPLATES
+// ============================================================
+
+model Template {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  category    String
+  schema      Json
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  documents Document[]
+
+  @@index([isActive, deletedAt])
+  @@index([category, isActive, deletedAt])
+  @@map("templates")
+}
+
+// ============================================================
+// MÓDULO: DOCUMENTS
+// ============================================================
+
+model Document {
+  id            String         @id @default(cuid())
+  title         String
+  content       Json
+  status        DocumentStatus @default(DRAFT)
+  clientId      String?
+  projectId     String?
+  environmentId String?
+  templateId    String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  deletedAt     DateTime?
+
+  client      Client?      @relation(fields: [clientId], references: [id])
+  project     Project?     @relation(fields: [projectId], references: [id])
+  environment Environment? @relation(fields: [environmentId], references: [id])
+  template    Template?    @relation(fields: [templateId], references: [id])
+  attachments Attachment[]
+
+  @@index([clientId, deletedAt])
+  @@index([projectId, deletedAt])
+  @@index([environmentId, deletedAt])
+  @@index([templateId, deletedAt])
+  @@index([status, deletedAt])
+  @@index([updatedAt])
+  @@map("documents")
+}
+
+// ============================================================
+// MÓDULO: UPLOADS / ATTACHMENTS
+// ============================================================
+
+model Attachment {
+  id          String      @id @default(cuid())
+  name        String
+  filename    String
+  mimetype    String
+  size        Int
+  storagePath String
+  storageType StorageType @default(LOCAL)
+  documentId  String
+  uploadedBy  String?
+  createdAt   DateTime    @default(now())
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
+  @@map("attachments")
+}
+
+// ============================================================
+// ENUMS
+// ============================================================
+
+enum UserRole {
+  ADMIN
+  ENGINEER
+  VIEWER
+}
+
+enum ClientStatus {
+  ACTIVE
+  INACTIVE
+  PROSPECT
+}
+
+enum ProjectType {
+  IMPLEMENTATION
+  MIGRATION
+  SUPPORT
+  UPGRADE
+  CONSULTING
+  OTHER
+}
+
+enum ProjectStatus {
+  PLANNING
+  IN_PROGRESS
+  ON_HOLD
+  COMPLETED
+  CANCELLED
+}
+
+enum EnvironmentType {
+  PRODUCTION
+  HOMOLOGATION
+  DEVELOPMENT
+  SANDBOX
+}
+
+enum DocumentStatus {
+  DRAFT
+  REVIEW
+  APPROVED
+  ARCHIVED
+}
+
+enum StorageType {
+  LOCAL
+  S3
+  AZURE_BLOB
+}
