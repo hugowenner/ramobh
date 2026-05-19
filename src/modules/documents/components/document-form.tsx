@@ -261,17 +261,20 @@ export function DocumentForm({
         {/* Environment (optional) */}
         <div className="space-y-1.5">
           <Label htmlFor="environmentId">Ambiente</Label>
+          {/* Hidden input carries normalised value ("" for none) to the action */}
+          <input type="hidden" name="environmentId" value={selectedEnvironmentId} />
           <Select
             key={envSelectKey}
-            name="environmentId"
-            value={selectedEnvironmentId}
-            onValueChange={setSelectedEnvironmentId}
+            value={selectedEnvironmentId || "__none__"}
+            onValueChange={(v) =>
+              setSelectedEnvironmentId(v === "__none__" ? "" : v)
+            }
           >
             <SelectTrigger id="environmentId">
               <SelectValue placeholder="Nenhum (opcional)" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Nenhum (opcional)</SelectItem>
+              <SelectItem value="__none__">Nenhum (opcional)</SelectItem>
               {environmentOptions.map((e) => (
                 <SelectItem key={e.id} value={e.id}>
                   {e.name}

@@ -65,13 +65,13 @@ export function DocumentFilters({
 
       <Select
         defaultValue={defaultStatus || ""}
-        onValueChange={(v) => push({ status: v })}
+        onValueChange={(v) => push({ status: v === "ALL" ? "" : v })}
       >
         <SelectTrigger className="sm:w-[180px]">
           <SelectValue placeholder="Todos os status" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="">Todos os status</SelectItem>
+          <SelectItem value="ALL">Todos os status</SelectItem>
           {Object.values(DocumentStatus).map((s) => (
             <SelectItem key={s} value={s}>
               {DOCUMENT_STATUS_LABELS[s]}
@@ -83,13 +83,13 @@ export function DocumentFilters({
       {templates.length > 0 && (
         <Select
           defaultValue={defaultTemplateId || ""}
-          onValueChange={(v) => push({ templateId: v })}
+          onValueChange={(v) => push({ templateId: v === "ALL" ? "" : v })}
         >
           <SelectTrigger className="sm:w-[220px]">
             <SelectValue placeholder="Todos os templates" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">Todos os templates</SelectItem>
+            <SelectItem value="ALL">Todos os templates</SelectItem>
             {templates.map((t) => (
               <SelectItem key={t.id} value={t.id}>
                 {t.name}

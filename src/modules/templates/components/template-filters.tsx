@@ -60,13 +60,13 @@ export function TemplateFilters({
       {categories.length > 0 && (
         <Select
           defaultValue={defaultCategory || ""}
-          onValueChange={(v) => push({ category: v })}
+          onValueChange={(v) => push({ category: v === "ALL" ? "" : v })}
         >
           <SelectTrigger className="sm:w-[200px]">
             <SelectValue placeholder="Todas as categorias" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">Todas as categorias</SelectItem>
+            <SelectItem value="ALL">Todas as categorias</SelectItem>
             {categories.map((cat) => (
               <SelectItem key={cat} value={cat}>
                 {cat}
