@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useCallback } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import { X } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -48,6 +50,9 @@ export function TemplateFilters({
     400
   );
 
+  // undefined = "no filter active" — the single canonical absence value
+  const activeCategory: string | undefined = defaultCategory || undefined;
+
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:flex-wrap">
       <Input
@@ -58,22 +63,36 @@ export function TemplateFilters({
       />
 
       {categories.length > 0 && (
-        <Select
-          defaultValue={defaultCategory || ""}
-          onValueChange={(v) => push({ category: v === "ALL" ? "" : v })}
-        >
-          <SelectTrigger className="sm:w-[200px]">
-            <SelectValue placeholder="Todas as categorias" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ALL">Todas as categorias</SelectItem>
-            {categories.map((cat) => (
-              <SelectItem key={cat} value={cat}>
-                {cat}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-1">
+          <Select
+            value={activeCategory}
+            onValueChange={(v) => push({ category: v })}
+          >
+            <SelectTrigger className="sm:w-[200px]">
+              <SelectValue placeholder="Todas as categorias" />
+            </SelectTrigger>
+            <SelectContent>
+              {categories.map((cat) => (
+                <SelectItem key={cat} value={cat}>
+                  {cat}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {activeCategory && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 shrink-0"
+              onClick={() => push({ category: "" })}
+              aria-label="Limpar filtro de categoria"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
       )}
     </div>
   );

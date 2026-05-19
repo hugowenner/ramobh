@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { X } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -11,21 +13,28 @@ import {
 
 export type ProjectOption = { id: string; name: string };
 
-// Radix Select does not allow SelectItem value="".
-// We use "__none__" as a sentinel for "no project selected" and
-// normalise it to "" before exposing it to the form / parent.
-const NONE = "__none__";
-
 type Props = {
   projects: ProjectOption[];
+  /** Uncontrolled initial value. "" | undefined = no project selected. */
   defaultValue?: string;
+  /** Controlled value. Pass undefined for "nothing selected". */
   value?: string;
-  onValueChange?: (value: string) => void;
+  onValueChange?: (value: string | undefined) => void;
   disabled?: boolean;
   placeholder?: string;
 };
 
-// "" = "no project" (optional field)
+/**
+ * Optional project selector.
+ *
+ * State model:
+ *   string   = a project is selected (its CUID)
+ *   undefined = no project (optional field not filled)
+ *
+ * The component renders a <input type="hidden" name="projectId">
+ * that always carries "" when undefined, so the server action's
+ * optId("projectId") converts it to null correctly.
+ */
 export function ProjectSelect({
   projects,
   defaultValue,
@@ -34,40 +43,39 @@ export function ProjectSelect({
   disabled = false,
   placeholder = "Nenhum (opcional)",
 }: Props) {
-  // Internal state normalises "" ↔ NONE so Radix never sees value="".
-  const [internalValue, setInternalValue] = useState<string>(
-    defaultValue ?? ""
+  const controlled = valueProp !== undefined || onValueChange !== undefined;
+
+  // Internal state for uncontrolled mode.
+  const [internalValue, setInternalValue] = useState<string | undefined>(
+    defaultValue || undefined
   );
 
-  const controlled = valueProp !== undefined && onValueChange !== undefined;
-
-  // The "effective" value shown in the Select (maps "" → NONE so Radix is happy)
-  const radixValue = (controlled ? valueProp : internalValue) || NONE;
+  const activeValue: string | undefined = controlled ? valueProp : internalValue;
 
   function handleChange(v: string) {
-    const normalised = v === NONE ? "" : v;
-    if (!controlled) setInternalValue(normalised);
-    onValueChange?.(normalised);
+    if (!controlled) setInternalValue(v);
+    onValueChange?.(v);
+  }
+
+  function handleClear() {
+    if (!controlled) setInternalValue(undefined);
+    onValueChange?.(undefined);
   }
 
   return (
-    <>
-      {/* Hidden input carries the normalised value ("" for none) to the form */}
-      <input
-        type="hidden"
-        name="projectId"
-        value={controlled ? (valueProp ?? "") : internalValue}
-      />
+    <div className="flex items-center gap-1">
+      {/* Carries normalised value to the form: "" when nothing selected */}
+      <input type="hidden" name="projectId" value={activeValue ?? ""} />
+
       <Select
-        value={radixValue}
+        value={activeValue}
         onValueChange={handleChange}
         disabled={disabled}
       >
-        <SelectTrigger>
+        <SelectTrigger className="flex-1">
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value={NONE}>Nenhum (opcional)</SelectItem>
           {projects.map((p) => (
             <SelectItem key={p.id} value={p.id}>
               {p.name}
@@ -75,6 +83,19 @@ export function ProjectSelect({
           ))}
         </SelectContent>
       </Select>
-    </>
+
+      {activeValue && !disabled && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-9 w-9 shrink-0"
+          onClick={handleClear}
+          aria-label="Limpar projeto selecionado"
+        >
+          <X className="h-4 w-4" />
+        </Button>
+      )}
+    </div>
   );
 }

@@ -7,6 +7,7 @@ import {
   useTransition,
 } from "react";
 import { useRouter } from "next/navigation";
+import { X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -82,8 +83,9 @@ export function DocumentForm({
   const [isLoadingSchema, startSchemaTransition] = useTransition();
 
   // ── Client / project / environment cascade ─────────────────
-  const [selectedClientId, setSelectedClientId] = useState(
-    defaultValues?.clientId ?? ""
+  // undefined = "nothing selected" — single canonical absence value
+  const [selectedClientId, setSelectedClientId] = useState<string | undefined>(
+    defaultValues?.clientId ?? undefined
   );
   const [projectOptions, setProjectOptions] =
     useState<ProjectOption[]>(initialProjects);
@@ -91,9 +93,9 @@ export function DocumentForm({
     useState<EnvironmentOption[]>(initialEnvironments);
   const [projectSelectKey, setProjectSelectKey] = useState(0);
   const [envSelectKey, setEnvSelectKey] = useState(0);
-  const [selectedEnvironmentId, setSelectedEnvironmentId] = useState(
-    defaultValues?.environmentId ?? ""
-  );
+  const [selectedEnvironmentId, setSelectedEnvironmentId] = useState<
+    string | undefined
+  >(defaultValues?.environmentId ?? undefined);
   const [, startRelationsTransition] = useTransition();
 
   // Effective schema — edit mode uses the snapshot, create mode uses loaded
@@ -125,7 +127,7 @@ export function DocumentForm({
     setEnvironmentOptions([]);
     setProjectSelectKey((k) => k + 1);
     setEnvSelectKey((k) => k + 1);
-    setSelectedEnvironmentId("");
+    setSelectedEnvironmentId(undefined);
 
     if (!clientId) return;
 
@@ -261,27 +263,43 @@ export function DocumentForm({
         {/* Environment (optional) */}
         <div className="space-y-1.5">
           <Label htmlFor="environmentId">Ambiente</Label>
-          {/* Hidden input carries normalised value ("" for none) to the action */}
-          <input type="hidden" name="environmentId" value={selectedEnvironmentId} />
-          <Select
-            key={envSelectKey}
-            value={selectedEnvironmentId || "__none__"}
-            onValueChange={(v) =>
-              setSelectedEnvironmentId(v === "__none__" ? "" : v)
-            }
-          >
-            <SelectTrigger id="environmentId">
-              <SelectValue placeholder="Nenhum (opcional)" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__none__">Nenhum (opcional)</SelectItem>
-              {environmentOptions.map((e) => (
-                <SelectItem key={e.id} value={e.id}>
-                  {e.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {/* Carries normalised value to the action: "" when nothing selected */}
+          <input
+            type="hidden"
+            name="environmentId"
+            value={selectedEnvironmentId ?? ""}
+          />
+          <div className="flex items-center gap-1">
+            <Select
+              key={envSelectKey}
+              value={selectedEnvironmentId}
+              onValueChange={setSelectedEnvironmentId}
+            >
+              <SelectTrigger id="environmentId" className="flex-1">
+                <SelectValue placeholder="Nenhum (opcional)" />
+              </SelectTrigger>
+              <SelectContent>
+                {environmentOptions.map((e) => (
+                  <SelectItem key={e.id} value={e.id}>
+                    {e.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {selectedEnvironmentId && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9 shrink-0"
+                onClick={() => setSelectedEnvironmentId(undefined)}
+                aria-label="Limpar ambiente selecionado"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
           {fieldError("environmentId") && (
             <p className="text-xs text-destructive">{fieldError("environmentId")}</p>
           )}

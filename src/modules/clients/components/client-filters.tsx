@@ -2,7 +2,9 @@
 
 import { useCallback } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import { X } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -14,7 +16,6 @@ import { ClientStatus } from "@/generated/prisma";
 import { useDebouncedCallback } from "use-debounce";
 
 const STATUS_OPTIONS = [
-  { value: "ALL", label: "Todos os status" },
   { value: ClientStatus.ACTIVE, label: "Ativo" },
   { value: ClientStatus.INACTIVE, label: "Inativo" },
   { value: ClientStatus.PROSPECT, label: "Prospecto" },
@@ -34,7 +35,7 @@ export function ClientFilters({
   const push = useCallback(
     (key: string, value: string) => {
       const params = new URLSearchParams(searchParams.toString());
-      if (value && value !== "ALL") {
+      if (value) {
         params.set(key, value);
       } else {
         params.delete(key);
@@ -50,6 +51,8 @@ export function ClientFilters({
     400
   );
 
+  const activeStatus: string | undefined = defaultStatus || undefined;
+
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
       <Input
@@ -58,21 +61,35 @@ export function ClientFilters({
         onChange={(e) => handleSearch(e.target.value)}
         className="sm:max-w-xs"
       />
-      <Select
-        defaultValue={defaultStatus || "ALL"}
-        onValueChange={(value) => push("status", value)}
-      >
-        <SelectTrigger className="sm:w-[180px]">
-          <SelectValue placeholder="Status" />
-        </SelectTrigger>
-        <SelectContent>
-          {STATUS_OPTIONS.map((opt) => (
-            <SelectItem key={opt.value} value={opt.value}>
-              {opt.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      <div className="flex items-center gap-1">
+        <Select
+          value={activeStatus}
+          onValueChange={(v) => push("status", v)}
+        >
+          <SelectTrigger className="sm:w-[180px]">
+            <SelectValue placeholder="Todos os status" />
+          </SelectTrigger>
+          <SelectContent>
+            {STATUS_OPTIONS.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>
+                {opt.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {activeStatus && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 shrink-0"
+            onClick={() => push("status", "")}
+            aria-label="Limpar filtro de status"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        )}
+      </div>
     </div>
   );
 }

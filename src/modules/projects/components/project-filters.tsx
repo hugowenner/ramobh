@@ -2,7 +2,9 @@
 
 import { useCallback } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import { X } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -15,13 +17,10 @@ import { PROJECT_STATUS_LABELS } from "../utils/project";
 import { useDebouncedCallback } from "use-debounce";
 import type { ClientOption } from "@/modules/clients/components/client-select";
 
-const STATUS_OPTIONS = [
-  { value: "ALL", label: "Todos os status" },
-  ...Object.values(ProjectStatus).map((s) => ({
-    value: s,
-    label: PROJECT_STATUS_LABELS[s],
-  })),
-];
+const STATUS_OPTIONS = Object.values(ProjectStatus).map((s) => ({
+  value: s,
+  label: PROJECT_STATUS_LABELS[s],
+}));
 
 type Props = {
   clients: ClientOption[];
@@ -43,7 +42,7 @@ export function ProjectFilters({
   const push = useCallback(
     (key: string, value: string) => {
       const params = new URLSearchParams(searchParams.toString());
-      if (value && value !== "ALL") {
+      if (value) {
         params.set(key, value);
       } else {
         params.delete(key);
@@ -59,6 +58,9 @@ export function ProjectFilters({
     400
   );
 
+  const activeStatus: string | undefined = defaultStatus || undefined;
+  const activeClientId: string | undefined = defaultClientId || undefined;
+
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:flex-wrap">
       <Input
@@ -67,37 +69,66 @@ export function ProjectFilters({
         onChange={(e) => handleSearch(e.target.value)}
         className="sm:max-w-xs"
       />
-      <Select
-        defaultValue={defaultStatus || "ALL"}
-        onValueChange={(v) => push("status", v)}
-      >
-        <SelectTrigger className="sm:w-[180px]">
-          <SelectValue placeholder="Status" />
-        </SelectTrigger>
-        <SelectContent>
-          {STATUS_OPTIONS.map((opt) => (
-            <SelectItem key={opt.value} value={opt.value}>
-              {opt.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      <Select
-        defaultValue={defaultClientId || "ALL"}
-        onValueChange={(v) => push("clientId", v)}
-      >
-        <SelectTrigger className="sm:w-[200px]">
-          <SelectValue placeholder="Todos os clientes" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="ALL">Todos os clientes</SelectItem>
-          {clients.map((c) => (
-            <SelectItem key={c.id} value={c.id}>
-              {c.name}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+
+      <div className="flex items-center gap-1">
+        <Select
+          value={activeStatus}
+          onValueChange={(v) => push("status", v)}
+        >
+          <SelectTrigger className="sm:w-[180px]">
+            <SelectValue placeholder="Todos os status" />
+          </SelectTrigger>
+          <SelectContent>
+            {STATUS_OPTIONS.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>
+                {opt.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {activeStatus && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 shrink-0"
+            onClick={() => push("status", "")}
+            aria-label="Limpar filtro de status"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        )}
+      </div>
+
+      <div className="flex items-center gap-1">
+        <Select
+          value={activeClientId}
+          onValueChange={(v) => push("clientId", v)}
+        >
+          <SelectTrigger className="sm:w-[200px]">
+            <SelectValue placeholder="Todos os clientes" />
+          </SelectTrigger>
+          <SelectContent>
+            {clients.map((c) => (
+              <SelectItem key={c.id} value={c.id}>
+                {c.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {activeClientId && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 shrink-0"
+            onClick={() => push("clientId", "")}
+            aria-label="Limpar filtro de cliente"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        )}
+      </div>
     </div>
   );
 }
