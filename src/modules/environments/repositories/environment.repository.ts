@@ -1,9 +1,18 @@
 import { prisma } from "@/core/database/client";
 import type { TransactionClient } from "@/core/database/types";
 import type { Prisma } from "@/generated/prisma";
-import type { EnvironmentFilters, EnvironmentSummary } from "../types";
+import type {
+  EnvironmentFilters,
+  EnvironmentSummary,
+  EnvironmentWithRelations,
+} from "../types";
 
 type Db = TransactionClient | typeof prisma;
+
+const RELATION_SELECT = {
+  client: { select: { id: true, name: true } },
+  project: { select: { id: true, name: true } },
+} as const;
 
 const SUMMARY_SELECT = {
   id: true,
@@ -15,23 +24,36 @@ const SUMMARY_SELECT = {
   url: true,
   version: true,
   createdAt: true,
+  ...RELATION_SELECT,
 } satisfies Prisma.EnvironmentSelect;
 
-function buildWhere(filters: EnvironmentFilters): Prisma.EnvironmentWhereInput {
+function buildWhere(
+  filters: EnvironmentFilters
+): Prisma.EnvironmentWhereInput {
   return {
     deletedAt: null,
     ...(filters.type && { type: filters.type }),
     ...(filters.clientId && { clientId: filters.clientId }),
     ...(filters.projectId && { projectId: filters.projectId }),
     ...(filters.search && {
-      name: { contains: filters.search, mode: "insensitive" },
+      OR: [
+        { name: { contains: filters.search, mode: "insensitive" } },
+        { client: { name: { contains: filters.search, mode: "insensitive" } } },
+        { project: { name: { contains: filters.search, mode: "insensitive" } } },
+      ],
     }),
   };
 }
 
 export const environmentRepository = {
-  async findById(id: string, db: Db = prisma) {
-    return db.environment.findFirst({ where: { id, deletedAt: null } });
+  async findById(
+    id: string,
+    db: Db = prisma
+  ): Promise<EnvironmentWithRelations | null> {
+    return db.environment.findFirst({
+      where: { id, deletedAt: null },
+      include: RELATION_SELECT,
+    }) as Promise<EnvironmentWithRelations | null>;
   },
 
   async findMany(
@@ -50,7 +72,7 @@ export const environmentRepository = {
       }),
       db.environment.count({ where }),
     ]);
-    return { data, total };
+    return { data: data as EnvironmentSummary[], total };
   },
 
   async create(data: Prisma.EnvironmentCreateInput, db: Db = prisma) {

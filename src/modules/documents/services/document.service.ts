@@ -1,97 +1,214 @@
+import { z } from "zod";
 import { NotFoundError, ValidationError } from "@/core/errors";
 import { documentRepository } from "../repositories/document.repository";
-import { withParsedContent } from "./document.parser";
+import { mapDetailDTO, mapEditDefaults, parseSchemaSnapshot } from "./document.parser";
 import { templateService } from "@/modules/templates/services/template.service";
+import { assertDocumentDataValid } from "../validators";
+import { DOCUMENT_STATUS_TRANSITIONS } from "../constants";
+import {
+  createDocumentSchema,
+  listDocumentsSchema,
+  updateDocumentSchema,
+  updateDocumentStatusSchema,
+} from "../schemas";
+import type { Prisma } from "@/generated/prisma";
+import type { PaginatedResult } from "@/types";
+import type {
+  DocumentDetail,
+  DocumentEditDefaults,
+  DocumentListItem,
+} from "../types";
 import type {
   CreateDocumentInput,
   UpdateDocumentInput,
-  ListDocumentsInput,
+  UpdateDocumentStatusInput,
 } from "../schemas";
-import type { PaginatedResult } from "@/types";
-import type { DocumentRecord, DocumentSummary } from "../types";
-import type { DocumentWithParsedContent } from "./document.parser";
+
+// ── Zod helpers ───────────────────────────────────────────────
+
+type ZodResult<T> =
+  | { success: true; data: T }
+  | { success: false; error: z.ZodError };
+
+function formatZodError(error: z.ZodError): string {
+  const first = error.issues[0];
+  const path = first?.path.join(".") ?? "";
+  const msg = first?.message ?? "dados inválidos";
+  return path ? `${path}: ${msg}` : msg;
+}
+
+function parseOrThrow<T>(result: ZodResult<T>): T {
+  if (!result.success) throw new ValidationError(formatZodError(result.error));
+  return result.data;
+}
+
+// ── Service ───────────────────────────────────────────────────
 
 export const documentService = {
-  async list(
-    input: ListDocumentsInput
-  ): Promise<PaginatedResult<DocumentSummary>> {
+  // ── List ────────────────────────────────────────────────────
+
+  async list(input: unknown): Promise<PaginatedResult<DocumentListItem>> {
     const { page, limit, search, status, clientId, projectId, templateId } =
-      input;
+      parseOrThrow(
+        listDocumentsSchema.safeParse(input) as ZodResult<
+          z.infer<typeof listDocumentsSchema>
+        >
+      );
+
     const skip = (page - 1) * limit;
-    const { data, total } = await documentRepository.findMany(
-      { search, status, clientId, projectId, templateId },
-      { skip, take: limit }
-    );
-    return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
-  },
+    const filters = { search, status, clientId, projectId, templateId };
 
-  async getById(id: string): Promise<DocumentWithParsedContent> {
-    const doc = await documentRepository.findById(id);
-    if (!doc) throw new NotFoundError("Documento");
-    return withParsedContent(doc);
-  },
+    const [rows, total] = await Promise.all([
+      documentRepository.findMany(filters, { skip, take: limit }),
+      documentRepository.count(filters),
+    ]);
 
-  async getByIdWithAttachments(id: string) {
-    const doc = await documentRepository.findByIdWithAttachments(id);
-    if (!doc) throw new NotFoundError("Documento");
     return {
-      ...withParsedContent(doc),
-      attachments: doc.attachments,
+      data: rows as unknown as DocumentListItem[],
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
     };
   },
 
-  async create(input: CreateDocumentInput): Promise<DocumentRecord> {
-    // Valida campos obrigatórios do template se informado
-    if (input.templateId) {
-      const schema = await templateService.getSchema(input.templateId);
-      const missingRequired = schema.fields
-        .filter((f) => f.required)
-        .filter((f) => !(f.id in input.content.fields));
+  // ── Get by id ────────────────────────────────────────────────
 
-      if (missingRequired.length > 0) {
-        const labels = missingRequired.map((f) => f.label).join(", ");
-        throw new ValidationError(`Campos obrigatórios ausentes: ${labels}`);
-      }
-    }
-
-    return documentRepository.create({
-      title: input.title,
-      content: input.content,
-      status: input.status,
-      ...(input.clientId && { client: { connect: { id: input.clientId } } }),
-      ...(input.projectId && {
-        project: { connect: { id: input.projectId } },
-      }),
-      ...(input.environmentId && {
-        environment: { connect: { id: input.environmentId } },
-      }),
-      ...(input.templateId && {
-        template: { connect: { id: input.templateId } },
-      }),
-    });
+  async getById(id: string): Promise<DocumentDetail> {
+    const row = await documentRepository.findById(id);
+    if (!row) throw new NotFoundError("Documento");
+    return mapDetailDTO(row);
   },
 
-  async update(id: string, input: UpdateDocumentInput): Promise<DocumentRecord> {
-    const existing = await documentRepository.findById(id);
+  async getForEdit(id: string): Promise<DocumentEditDefaults> {
+    const row = await documentRepository.findForEdit(id);
+    if (!row) throw new NotFoundError("Documento");
+    return mapEditDefaults(row);
+  },
+
+  // ── Create ───────────────────────────────────────────────────
+
+  /**
+   * Creates a document.
+   * Clones the current template schema into `schemaSnapshot` — this copy
+   * is immutable after creation and drives rendering and PDF generation.
+   */
+  async create(
+    input: unknown,
+    createdById: string
+  ): Promise<DocumentEditDefaults> {
+    const parsed = parseOrThrow(
+      createDocumentSchema.safeParse(input) as ZodResult<CreateDocumentInput>
+    );
+
+    // 1. Fetch template — validates it exists and is active
+    const template = await templateService.getTemplateById(parsed.templateId);
+    if (!template.isActive) {
+      throw new ValidationError("Template inativo — não é possível criar documentos");
+    }
+
+    // 2. Validate required fields in data
+    assertDocumentDataValid(template.schema, parsed.data);
+
+    // 3. Persist with immutable schemaSnapshot
+    const row = await documentRepository.create({
+      title: parsed.title,
+      templateVersion: template.schema.version,
+      schemaSnapshot: template.schema as unknown as Prisma.InputJsonValue,
+      data: parsed.data as unknown as Prisma.InputJsonValue,
+      status: parsed.status,
+      template: { connect: { id: parsed.templateId } },
+      createdBy: { connect: { id: createdById } },
+      ...(parsed.clientId && { client: { connect: { id: parsed.clientId } } }),
+      ...(parsed.projectId && {
+        project: { connect: { id: parsed.projectId } },
+      }),
+      ...(parsed.environmentId && {
+        environment: { connect: { id: parsed.environmentId } },
+      }),
+    });
+
+    return mapEditDefaults(row);
+  },
+
+  // ── Update ───────────────────────────────────────────────────
+
+  /**
+   * Updates title, data, and/or relation fields.
+   * Does NOT allow changing the template or schemaSnapshot.
+   * APPROVED documents cannot be edited.
+   */
+  async update(
+    id: string,
+    input: unknown
+  ): Promise<DocumentEditDefaults> {
+    const parsed = parseOrThrow(
+      updateDocumentSchema.safeParse(input) as ZodResult<UpdateDocumentInput>
+    );
+
+    const existing = await documentRepository.findForEdit(id);
     if (!existing) throw new NotFoundError("Documento");
 
-    // Documentos aprovados não podem ser editados
     if (existing.status === "APPROVED") {
       throw new ValidationError("Documentos aprovados não podem ser editados");
     }
 
-    return documentRepository.update(id, {
-      ...(input.title && { title: input.title }),
-      ...(input.content && { content: input.content }),
-      ...(input.status && { status: input.status }),
-      ...(input.environmentId !== undefined && {
-        environmentId: input.environmentId,
+    // If data is being replaced, validate required fields against snapshot
+    if (parsed.data !== undefined) {
+      const schema = parseSchemaSnapshot(existing.schemaSnapshot, id);
+      assertDocumentDataValid(schema, parsed.data);
+    }
+
+    const row = await documentRepository.update(id, {
+      ...(parsed.title !== undefined && { title: parsed.title }),
+      ...(parsed.data !== undefined && {
+        data: parsed.data as unknown as Prisma.InputJsonValue,
+      }),
+      // Explicit null clears the relation; undefined = no change
+      ...(parsed.clientId !== undefined && {
+        clientId: parsed.clientId ?? null,
+      }),
+      ...(parsed.projectId !== undefined && {
+        projectId: parsed.projectId ?? null,
+      }),
+      ...(parsed.environmentId !== undefined && {
+        environmentId: parsed.environmentId ?? null,
       }),
     });
+
+    return mapEditDefaults(row);
   },
 
+  // ── Status update ─────────────────────────────────────────────
+
+  async updateStatus(
+    id: string,
+    input: unknown
+  ): Promise<DocumentEditDefaults> {
+    const { status: newStatus } = parseOrThrow(
+      updateDocumentStatusSchema.safeParse(
+        input
+      ) as ZodResult<UpdateDocumentStatusInput>
+    );
+
+    const existing = await documentRepository.findForEdit(id);
+    if (!existing) throw new NotFoundError("Documento");
+
+    const allowed = DOCUMENT_STATUS_TRANSITIONS[existing.status];
+    if (!allowed.includes(newStatus)) {
+      throw new ValidationError(
+        `Transição inválida: ${existing.status} → ${newStatus}`
+      );
+    }
+
+    const row = await documentRepository.update(id, { status: newStatus });
+    return mapEditDefaults(row);
+  },
+
+  // ── Delete ───────────────────────────────────────────────────
+
   async delete(id: string): Promise<void> {
-    const existing = await documentRepository.findById(id);
+    const existing = await documentRepository.findForEdit(id);
     if (!existing) throw new NotFoundError("Documento");
     await documentRepository.softDelete(id);
   },

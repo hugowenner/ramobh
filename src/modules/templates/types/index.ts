@@ -1,47 +1,52 @@
 import type { Template } from "@/generated/prisma";
 
-// ── Template JSON schema ─────────────────────────────────────
-
 export type TemplateFieldType =
   | "text"
   | "textarea"
   | "number"
-  | "date"
   | "select"
-  | "multiselect"
   | "checkbox"
-  | "steps"
-  | "table";
+  | "date";
 
-export type TemplateField = {
+export interface TemplateField {
   id: string;
   type: TemplateFieldType;
   label: string;
   required: boolean;
   placeholder?: string;
-  hint?: string;
-  options?: string[];    // select / multiselect
-  columns?: string[];    // table
-  defaultValue?: string | number | boolean | string[];
-};
+  options?: string[];
+}
 
-/**
- * Estrutura armazenada em Template.schema (campo Json do Prisma).
- * Versionada para suportar migrações de schema sem quebrar documentos existentes.
- */
-export type TemplateSchema = {
-  version: "1";
+export interface TemplateSection {
+  id: string;
+  title: string;
   fields: TemplateField[];
+}
+
+export interface TemplateSchema {
+  version: string;
+  sections: TemplateSection[];
+}
+
+export type TemplateListDTO = Pick<Template, "id" | "name" | "category" | "updatedAt"> & {
+  version: string;
+  sectionCount: number;
+  fieldCount: number;
 };
 
-// ── Domain types ─────────────────────────────────────────────
-
-export type TemplateRecord = Template;
-
-export type TemplateSummary = Pick<
+export type TemplateDetailDTO = Pick<
   Template,
-  "id" | "name" | "description" | "category" | "isActive" | "createdAt"
->;
+  "id" | "name" | "description" | "category" | "isActive" | "createdAt" | "updatedAt"
+> & {
+  schema: TemplateSchema;
+};
+
+export type TemplateEditDTO = Pick<
+  Template,
+  "id" | "name" | "description" | "category" | "isActive"
+> & {
+  schema: TemplateSchema;
+};
 
 export type TemplateFilters = {
   search?: string;

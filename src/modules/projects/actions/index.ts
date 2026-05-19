@@ -5,6 +5,7 @@ import { toActionError } from "@/core/errors";
 import { projectService } from "../services/project.service";
 import { updateProjectSchema, createProjectSchema } from "../schemas";
 import type { ActionResult } from "@/types";
+import type { ProjectOption } from "../components/project-select";
 
 export type ProjectFormState = {
   success?: boolean;
@@ -77,5 +78,21 @@ export async function updateProjectAction(
     return { success: true };
   } catch (error) {
     return { error: toActionError(error) };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Read action — carrega opções de projeto por cliente para ProjectSelect dinâmico
+// ---------------------------------------------------------------------------
+
+export async function getProjectOptionsByClient(
+  clientId: string
+): Promise<ProjectOption[]> {
+  if (!clientId) return [];
+  try {
+    const result = await projectService.list({ clientId, page: 1, limit: 200 });
+    return result.data.map((p) => ({ id: p.id, name: p.name }));
+  } catch {
+    return [];
   }
 }

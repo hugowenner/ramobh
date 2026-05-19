@@ -12,7 +12,11 @@ export type ClientOption = { id: string; name: string };
 
 type Props = {
   clients: ClientOption[];
+  // uncontrolled (default) — use in ProjectForm
   defaultValue?: string;
+  // controlled — use in EnvironmentForm for dynamic ProjectSelect
+  value?: string;
+  onValueChange?: (value: string) => void;
   disabled?: boolean;
   placeholder?: string;
   required?: boolean;
@@ -21,14 +25,21 @@ type Props = {
 export function ClientSelect({
   clients,
   defaultValue,
+  value,
+  onValueChange,
   disabled = false,
   placeholder = "Selecione um cliente",
   required = false,
 }: Props) {
+  // controlled when value + onValueChange are provided, otherwise uncontrolled
+  const controlled = value !== undefined && onValueChange !== undefined;
+
   return (
     <Select
       name="clientId"
-      defaultValue={defaultValue}
+      {...(controlled
+        ? { value, onValueChange }
+        : { defaultValue })}
       disabled={disabled}
       required={required}
     >

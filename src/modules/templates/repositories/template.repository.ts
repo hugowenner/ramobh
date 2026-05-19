@@ -1,18 +1,41 @@
 import { prisma } from "@/core/database/client";
 import type { TransactionClient } from "@/core/database/types";
 import type { Prisma } from "@/generated/prisma";
-import type { TemplateFilters, TemplateSummary } from "../types";
+import type { TemplateFilters } from "../types";
 
 type Db = TransactionClient | typeof prisma;
 
-const SUMMARY_SELECT = {
+const LIST_SELECT = {
+  id: true,
+  name: true,
+  category: true,
+  schema: true,
+  updatedAt: true,
+} satisfies Prisma.TemplateSelect;
+
+const DETAIL_SELECT = {
   id: true,
   name: true,
   description: true,
   category: true,
+  schema: true,
   isActive: true,
   createdAt: true,
+  updatedAt: true,
 } satisfies Prisma.TemplateSelect;
+
+const EDIT_SELECT = {
+  id: true,
+  name: true,
+  description: true,
+  category: true,
+  schema: true,
+  isActive: true,
+} satisfies Prisma.TemplateSelect;
+
+type TemplateListRow = Prisma.TemplateGetPayload<{ select: typeof LIST_SELECT }>;
+type TemplateDetailRow = Prisma.TemplateGetPayload<{ select: typeof DETAIL_SELECT }>;
+type TemplateEditRow = Prisma.TemplateGetPayload<{ select: typeof EDIT_SELECT }>;
 
 function buildWhere(filters: TemplateFilters): Prisma.TemplateWhereInput {
   return {
@@ -20,60 +43,90 @@ function buildWhere(filters: TemplateFilters): Prisma.TemplateWhereInput {
     ...(filters.category && { category: filters.category }),
     ...(filters.isActive !== undefined && { isActive: filters.isActive }),
     ...(filters.search && {
-      name: { contains: filters.search, mode: "insensitive" },
+      OR: [
+        { name: { contains: filters.search, mode: "insensitive" } },
+        { description: { contains: filters.search, mode: "insensitive" } },
+        { category: { contains: filters.search, mode: "insensitive" } },
+      ],
     }),
   };
 }
 
 export const templateRepository = {
-  async findById(id: string, db: Db = prisma) {
-    return db.template.findFirst({ where: { id, deletedAt: null } });
+  async findById(id: string, db: Db = prisma): Promise<TemplateDetailRow | null> {
+    return db.template.findFirst({
+      where: { id, deletedAt: null },
+      select: DETAIL_SELECT,
+    });
   },
 
   async findMany(
     filters: TemplateFilters,
     pagination: { skip: number; take: number },
     db: Db = prisma
-  ): Promise<{ data: TemplateSummary[]; total: number }> {
-    const where = buildWhere(filters);
-    const [data, total] = await Promise.all([
-      db.template.findMany({
-        where,
-        select: SUMMARY_SELECT,
-        orderBy: [{ category: "asc" }, { name: "asc" }],
-        skip: pagination.skip,
-        take: pagination.take,
-      }),
-      db.template.count({ where }),
-    ]);
-    return { data, total };
+  ): Promise<TemplateListRow[]> {
+    return db.template.findMany({
+      where: buildWhere(filters),
+      select: LIST_SELECT,
+      orderBy: [{ category: "asc" }, { name: "asc" }],
+      skip: pagination.skip,
+      take: pagination.take,
+    });
   },
 
-  async findActive(db: Db = prisma) {
+  async count(filters: TemplateFilters, db: Db = prisma): Promise<number> {
+    return db.template.count({ where: buildWhere(filters) });
+  },
+
+  async findActive(db: Db = prisma): Promise<TemplateListRow[]> {
     return db.template.findMany({
       where: { deletedAt: null, isActive: true },
-      select: SUMMARY_SELECT,
+      select: LIST_SELECT,
       orderBy: [{ category: "asc" }, { name: "asc" }],
     });
   },
 
-  async create(data: Prisma.TemplateCreateInput, db: Db = prisma) {
-    return db.template.create({ data });
+  async create(
+    data: Prisma.TemplateCreateInput,
+    db: Db = prisma
+  ): Promise<TemplateEditRow> {
+    return db.template.create({ data, select: EDIT_SELECT });
   },
 
   async update(
     id: string,
     data: Prisma.TemplateUpdateInput,
     db: Db = prisma
-  ) {
-    return db.template.update({ where: { id, deletedAt: null }, data });
+  ): Promise<TemplateEditRow> {
+    return db.template.update({
+      where: { id, deletedAt: null },
+      data,
+      select: EDIT_SELECT,
+    });
   },
 
   async softDelete(id: string, db: Db = prisma) {
     return db.template.update({
       where: { id, deletedAt: null },
       data: { deletedAt: new Date(), isActive: false },
+      select: { id: true },
     });
+  },
+
+  async existsByName(
+    name: string,
+    excludeId?: string,
+    db: Db = prisma
+  ): Promise<boolean> {
+    const record = await db.template.findFirst({
+      where: {
+        name: { equals: name, mode: "insensitive" },
+        deletedAt: null,
+        ...(excludeId && { id: { not: excludeId } }),
+      },
+      select: { id: true },
+    });
+    return record !== null;
   },
 
   async listCategories(db: Db = prisma): Promise<string[]> {
@@ -83,6 +136,6 @@ export const templateRepository = {
       distinct: ["category"],
       orderBy: { category: "asc" },
     });
-    return rows.map((r) => r.category);
+    return rows.map((row) => row.category);
   },
 };

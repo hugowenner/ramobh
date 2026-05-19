@@ -22,8 +22,9 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  accounts Account[]
-  sessions Session[]
+  accounts  Account[]
+  sessions  Session[]
+  documents Document[]
 
   @@map("users")
 }
@@ -179,31 +180,69 @@ model Template {
 // ============================================================
 
 model Document {
-  id            String         @id @default(cuid())
-  title         String
-  content       Json
-  status        DocumentStatus @default(DRAFT)
-  clientId      String?
-  projectId     String?
-  environmentId String?
-  templateId    String?
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  deletedAt     DateTime?
+  id               String         @id @default(cuid())
+  title            String
 
+  templateId       String
+  templateVersion  String
+
+  /// Immutable copy of the template schema at creation time.
+  /// Never updated — guarantees historical reproducibility for PDF and AI.
+  schemaSnapshot   Json
+
+  /// Field values: Record<fieldId, value>. Updated on each save.
+  data             Json           @default("{}")
+
+  status           DocumentStatus @default(DRAFT)
+
+  clientId         String?
+  projectId        String?
+  environmentId    String?
+
+  createdById      String
+
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  deletedAt        DateTime?
+
+  template    Template     @relation(fields: [templateId], references: [id])
   client      Client?      @relation(fields: [clientId], references: [id])
   project     Project?     @relation(fields: [projectId], references: [id])
   environment Environment? @relation(fields: [environmentId], references: [id])
-  template    Template?    @relation(fields: [templateId], references: [id])
-  attachments Attachment[]
+  createdBy   User         @relation(fields: [createdById], references: [id])
+  attachments   Attachment[]
+  generatedPdfs GeneratedPdf[]
 
+  @@index([templateId, deletedAt])
   @@index([clientId, deletedAt])
   @@index([projectId, deletedAt])
   @@index([environmentId, deletedAt])
-  @@index([templateId, deletedAt])
   @@index([status, deletedAt])
+  @@index([createdById, deletedAt])
   @@index([updatedAt])
   @@map("documents")
+}
+
+// ============================================================
+// MÓDULO: PDF GENERATION
+// ============================================================
+
+model GeneratedPdf {
+  id              String   @id @default(cuid())
+  documentId      String
+  storagePath     String
+  filename        String
+  size            Int                        // bytes
+  mimeType        String   @default("application/pdf")
+  templateVersion String                     // from Document.templateVersion
+  documentVersion String                     // Document.updatedAt.toISOString()
+  generatedAt     DateTime @default(now())
+  generatedById   String?                    // userId, nullable (system generation)
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId, generatedAt])
+  @@map("generated_pdfs")
 }
 
 // ============================================================

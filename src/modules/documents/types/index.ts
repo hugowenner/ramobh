@@ -1,37 +1,70 @@
 import type { Document, DocumentStatus } from "@/generated/prisma";
 
-// ── Document JSON content ────────────────────────────────────
+// ── Document data ─────────────────────────────────────────────
 
 /**
- * Estrutura armazenada em Document.content (campo Json do Prisma).
- * Cada key é um `TemplateField.id`, o value é o dado preenchido.
- *
- * Estratégia de embeddings futura:
- *   - A geração do embedding usará: `title + stringifiedFields`
- *   - Armazenado em tabela separada `DocumentEmbedding` (pgvector)
- *   - O campo `templateVersion` garante chunks consistentes ao re-indexar
+ * Runtime data: flat map of fieldId → value.
+ * Stored in Document.data (Json).
+ * Decoupled from schemaSnapshot — only field ids are shared.
  */
-export type DocumentContent = {
+export type DocumentData = Record<string, unknown>;
+
+/** Typed field values used internally */
+export type FieldValue = string | number | boolean | null | undefined;
+
+// ── Domain DTOs ───────────────────────────────────────────────
+
+/** Used in list table */
+export type DocumentListItem = {
+  id: string;
+  title: string;
+  status: DocumentStatus;
   templateVersion: string;
-  fields: Record<string, string | number | boolean | string[]>;
+  updatedAt: Date;
+  createdAt: Date;
+  template: { id: string; name: string; category: string } | null;
+  client: { id: string; name: string } | null;
+  project: { id: string; name: string } | null;
+  createdBy: { id: string; name: string | null } | null;
 };
 
-// ── Domain types ─────────────────────────────────────────────
+/** Used in detail page — includes parsed schemaSnapshot */
+export type DocumentDetail = {
+  id: string;
+  title: string;
+  status: DocumentStatus;
+  templateId: string;
+  templateVersion: string;
+  schemaSnapshot: import("@/modules/templates/types").TemplateSchema;
+  data: DocumentData;
+  clientId: string | null;
+  projectId: string | null;
+  environmentId: string | null;
+  createdById: string;
+  createdAt: Date;
+  updatedAt: Date;
+  template: { id: string; name: string; category: string } | null;
+  client: { id: string; name: string } | null;
+  project: { id: string; name: string } | null;
+  environment: { id: string; name: string } | null;
+  createdBy: { id: string; name: string | null } | null;
+};
 
-export type DocumentRecord = Document;
+/** Used to populate the edit form */
+export type DocumentEditDefaults = {
+  id: string;
+  title: string;
+  status: DocumentStatus;
+  templateId: string;
+  templateVersion: string;
+  schemaSnapshot: import("@/modules/templates/types").TemplateSchema;
+  data: DocumentData;
+  clientId: string | null;
+  projectId: string | null;
+  environmentId: string | null;
+};
 
-export type DocumentSummary = Pick<
-  Document,
-  | "id"
-  | "title"
-  | "status"
-  | "clientId"
-  | "projectId"
-  | "environmentId"
-  | "templateId"
-  | "createdAt"
-  | "updatedAt"
->;
+// ── Filters ───────────────────────────────────────────────────
 
 export type DocumentFilters = {
   search?: string;
@@ -42,3 +75,4 @@ export type DocumentFilters = {
 };
 
 export type { DocumentStatus };
+export type { Document };

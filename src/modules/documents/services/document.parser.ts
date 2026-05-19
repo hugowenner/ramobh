@@ -1,29 +1,78 @@
-import { documentContentSchema } from "../schemas";
-import type { DocumentContent } from "../types";
-import type { Document } from "@/generated/prisma";
+import { validateTemplateSchema } from "@/modules/templates/utils/schema";
+import type { TemplateSchema } from "@/modules/templates/types";
 import { ValidationError } from "@/core/errors";
+import type { DocumentDetailRow, DocumentEditRow } from "../repositories/document.repository";
+import type { DocumentDetail, DocumentEditDefaults, DocumentData } from "../types";
+
+// ── Data parser ───────────────────────────────────────────────
 
 /**
- * Converte Document.content (JsonValue) para DocumentContent tipado.
- * Lança ValidationError se o conteúdo estiver corrompido — nunca retorna unknown.
+ * Casts Document.data (Prisma JsonValue) to DocumentData.
+ * Validates it is a plain object — rejects arrays, primitives.
  */
-export function parseDocumentContent(document: Document): DocumentContent {
-  const parsed = documentContentSchema.safeParse(document.content);
-  if (!parsed.success) {
+export function parseDocumentData(raw: unknown, documentId: string): DocumentData {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
     throw new ValidationError(
-      `Conteúdo do documento "${document.id}" está corrompido`
+      `Document.data inválido para documento "${documentId}" — esperado objeto JSON`
     );
   }
-  return parsed.data;
+  return raw as DocumentData;
 }
 
-export type DocumentWithParsedContent = Omit<Document, "content"> & {
-  content: DocumentContent;
-};
+/**
+ * Parses Document.schemaSnapshot (Prisma JsonValue) into a typed TemplateSchema.
+ * Throws ValidationError if the snapshot is structurally invalid.
+ */
+export function parseSchemaSnapshot(
+  raw: unknown,
+  documentId: string
+): TemplateSchema {
+  try {
+    return validateTemplateSchema(raw, `documento ${documentId}`);
+  } catch {
+    throw new ValidationError(
+      `schemaSnapshot corrompido para documento "${documentId}"`
+    );
+  }
+}
 
-export function withParsedContent(document: Document): DocumentWithParsedContent {
+// ── Row → DTO mappers ─────────────────────────────────────────
+
+export function mapDetailDTO(row: DocumentDetailRow): DocumentDetail {
   return {
-    ...document,
-    content: parseDocumentContent(document),
+    id: row.id,
+    title: row.title,
+    status: row.status,
+    templateId: row.templateId,
+    templateVersion: row.templateVersion,
+    schemaSnapshot: parseSchemaSnapshot(row.schemaSnapshot, row.id),
+    data: parseDocumentData(row.data, row.id),
+    clientId: row.clientId,
+    projectId: row.projectId,
+    environmentId: row.environmentId,
+    createdById: row.createdById,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+    template: row.template,
+    client: row.client,
+    project: row.project,
+    environment: row.environment,
+    createdBy: row.createdBy,
   };
 }
+
+export function mapEditDefaults(row: DocumentEditRow): DocumentEditDefaults {
+  return {
+    id: row.id,
+    title: row.title,
+    status: row.status,
+    templateId: row.templateId,
+    templateVersion: row.templateVersion,
+    schemaSnapshot: parseSchemaSnapshot(row.schemaSnapshot, row.id),
+    data: parseDocumentData(row.data, row.id),
+    clientId: row.clientId,
+    projectId: row.projectId,
+    environmentId: row.environmentId,
+  };
+}
+
