@@ -4,6 +4,7 @@ import { PrismaClient } from "../src/generated/prisma";
 import { PrismaPg } from "@prisma/adapter-pg";
 import bcrypt from "bcryptjs";
 import type { TemplateSchema } from "../src/modules/templates/types";
+import { toSlug } from "../src/modules/templates/utils/schema";
 
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString) throw new Error("DATABASE_URL não definida");
@@ -11,23 +12,21 @@ if (!connectionString) throw new Error("DATABASE_URL não definida");
 const adapter = new PrismaPg({ connectionString });
 const prisma = new PrismaClient({ adapter });
 
-// ── Schema helper ─────────────────────────────────────────────
-
-function schema(
-  sections: TemplateSchema["sections"]
-): TemplateSchema {
+function schema(sections: TemplateSchema["sections"]): TemplateSchema {
   return { version: "1", sections };
 }
 
-// ── Templates SAP ─────────────────────────────────────────────
+// ── Templates SAP ──────────────────────────────────────────────
 
 const templates: Array<{
+  slug: string;
   name: string;
   description: string;
   category: string;
   schema: TemplateSchema;
 }> = [
   {
+    slug: "implantacao-sap-business-one",
     name: "Implantação SAP Business One",
     description:
       "Registro de atividades e configurações durante implantação do SAP B1",
@@ -88,6 +87,7 @@ const templates: Array<{
     ]),
   },
   {
+    slug: "troubleshooting-sap-b1",
     name: "Troubleshooting SAP B1",
     description:
       "Registro de análise e resolução de incidentes no SAP Business One",
@@ -167,6 +167,7 @@ const templates: Array<{
     ]),
   },
   {
+    slug: "checklist-go-live-sap",
     name: "Checklist Go-Live SAP",
     description: "Verificações obrigatórias antes e durante o go-live do SAP",
     category: "Go-Live",
@@ -240,6 +241,7 @@ const templates: Array<{
     ]),
   },
   {
+    slug: "migracao-de-ambiente-sap",
     name: "Migração de Ambiente SAP",
     description:
       "Documentação de migração entre ambientes (ex: dev → prod, versão upgrade)",
@@ -317,12 +319,22 @@ const templates: Array<{
   },
 ];
 
-// ── Seed ──────────────────────────────────────────────────────
+// Verify slugs match toSlug(name) at runtime — catches typos in explicit slug strings
+for (const t of templates) {
+  const derived = toSlug(t.name);
+  if (t.slug !== derived) {
+    throw new Error(
+      `Seed slug mismatch for "${t.name}": explicit="${t.slug}" derived="${derived}"`
+    );
+  }
+}
+
+// ── Seed ───────────────────────────────────────────────────────
 
 async function main() {
   console.log("Iniciando seed...");
 
-  // Users
+  // ── Users ────────────────────────────────────────────────────
   const users = [
     {
       email: "admin@ramo.com.br",
@@ -345,41 +357,55 @@ async function main() {
   ];
 
   for (const u of users) {
-    const existing = await prisma.user.findUnique({ where: { email: u.email } });
-    if (!existing) {
-      const hashed = await bcrypt.hash(u.password, 12);
-      await prisma.user.create({
-        data: { name: u.name, email: u.email, password: hashed, role: u.role },
-      });
-      console.log(`  ✓ Usuário criado: ${u.email}`);
-    } else {
-      console.log(`  – Usuário já existe: ${u.email}`);
-    }
-  }
-
-  // Templates
-  let created = 0;
-  for (const t of templates) {
-    const existing = await prisma.template.findFirst({
-      where: { name: t.name, deletedAt: null },
+    const hashed = await bcrypt.hash(u.password, 12);
+    await prisma.user.upsert({
+      where: { email: u.email },
+      create: {
+        name: u.name,
+        email: u.email,
+        password: hashed,
+        role: u.role,
+      },
+      update: {
+        name: u.name,
+        role: u.role,
+        // Password intentionally NOT updated on re-seed to preserve manual changes
+      },
     });
-    if (!existing) {
-      await prisma.template.create({
-        data: {
-          name: t.name,
-          description: t.description,
-          category: t.category,
-          schema: t.schema as object,
-        },
-      });
-      created++;
-      console.log(`  ✓ Template criado: ${t.name}`);
-    } else {
-      console.log(`  – Template já existe: ${t.name}`);
-    }
+    console.log(`  ✓ Usuário: ${u.email}`);
   }
 
-  console.log(`\nSeed concluído. ${created} template(s) criado(s).`);
+  // ── Templates ────────────────────────────────────────────────
+  // upsert by slug — always keeps schema in sync with seed source.
+  // Adding a new template: add entry here, re-run seed.
+  // Updating a template schema: edit entry here, re-run seed (schema updates automatically).
+  // Renaming a template: update name here; slug stays the same (stable key).
+
+  for (const t of templates) {
+    await prisma.template.upsert({
+      where: { slug: t.slug },
+      create: {
+        slug: t.slug,
+        name: t.name,
+        description: t.description,
+        category: t.category,
+        schema: t.schema as object,
+        isActive: true,
+      },
+      update: {
+        name: t.name,
+        description: t.description,
+        category: t.category,
+        schema: t.schema as object,
+        // isActive and deletedAt intentionally NOT overwritten —
+        // manual deactivation via UI is preserved across re-seeds.
+        updatedAt: new Date(),
+      },
+    });
+    console.log(`  ✓ Template: ${t.name}`);
+  }
+
+  console.log(`\nSeed concluído. ${templates.length} template(s) sincronizados.`);
 }
 
 main()

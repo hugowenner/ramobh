@@ -159,6 +159,9 @@ model Environment {
 
 model Template {
   id          String    @id @default(cuid())
+  /// Stable slug derived from name — used as upsert key in seed.
+  /// Never changes even if name is renamed.
+  slug        String    @unique
   name        String
   description String?
   category    String

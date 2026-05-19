@@ -18,6 +18,7 @@ import {
   extractFieldCount,
   extractSectionCount,
   getTemplateVersion,
+  toSlug,
   validateTemplateSchema,
 } from "../utils/schema";
 
@@ -133,6 +134,7 @@ export const templateService = {
     if (exists) throw new ConflictError(`Template "${parsed.name}"`);
 
     const record = await templateRepository.create({
+      slug: toSlug(parsed.name),
       name: parsed.name,
       description: parsed.description ?? null,
       category: parsed.category,
