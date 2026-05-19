@@ -49,15 +49,21 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   callbacks: {
     jwt({ token, user }) {
       if (user) {
+        // Always set id — user exists only on initial login or token refresh
         token.id = user.id;
         token.role = (user as { role?: string }).role;
+      }
+      // If token doesn't have id (corrupted token), fail explicitly
+      if (!token.id) {
+        throw new Error("[Auth] JWT token missing id — token corrupted or invalid");
       }
       return token;
     },
     session({ session, token }) {
       if (session.user) {
+        // Token is guaranteed to have id from jwt callback above
         session.user.id = token.id as string;
-        (session.user as { role?: string }).role = token.role as string;
+        session.user.role = token.role as string;
       }
       return session;
     },

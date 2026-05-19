@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import { toActionError } from "@/core/errors";
-import { UnauthorizedError } from "@/core/errors";
+import { getValidatedUserId } from "@/core/auth/utils";
 import { documentService } from "../services/document.service";
 import { createDocumentSchema } from "../schemas";
 import type { DocumentFormState } from "./types";
@@ -13,8 +13,13 @@ export async function createDocumentAction(
   formData: FormData
 ): Promise<DocumentFormState> {
   const session = await auth();
-  if (!session?.user?.id) {
-    return { error: new UnauthorizedError().message };
+
+  // Validates session and throws UnauthorizedError if invalid
+  let userId: string;
+  try {
+    userId = getValidatedUserId(session);
+  } catch (error) {
+    return { error: toActionError(error) };
   }
 
   // Parse relation ids (empty string → null)
@@ -55,7 +60,7 @@ export async function createDocumentAction(
   }
 
   try {
-    const created = await documentService.create(parsed.data, session.user.id);
+    const created = await documentService.create(parsed.data, userId);
     revalidatePath("/documents");
     revalidatePath(`/documents/${created.id}`);
     return { success: true, documentId: created.id };
