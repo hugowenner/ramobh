@@ -10,23 +10,23 @@ export default function LoginPage() {
     <div className="w-full max-w-sm">
       {/* Brand */}
       <div className="mb-8 text-center">
-        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-slate-900 text-white">
+        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-ramo-primary text-white">
           <span className="text-lg font-bold">R</span>
         </div>
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
+        <h1 className="text-2xl font-semibold tracking-tight text-ramo-text">
           Portal Técnico
         </h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <p className="mt-1 text-sm text-ramo-muted">
           Ramo Consultoria SAP
         </p>
       </div>
 
       {/* Card */}
-      <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="rounded-xl border border-ramo-border bg-ramo-surface p-6 shadow-sm">
         <LoginForm />
       </div>
 
-      <p className="mt-6 text-center text-xs text-slate-400">
+      <p className="mt-6 text-center text-xs text-ramo-muted">
         Acesso restrito a colaboradores da Ramo
       </p>
     </div>

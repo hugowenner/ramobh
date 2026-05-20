@@ -81,4 +81,19 @@ export const clientRepository = {
     });
     return client !== null;
   },
+
+  /**
+   * Retorna todos os clientes ativos como opções para selects.
+   * Query mínima: apenas id + name, sem paginação.
+   * Usada em filtros de documentos e outros módulos.
+   */
+  async findAllForSelect(
+    db: Db = prisma
+  ): Promise<{ id: string; name: string }[]> {
+    return db.client.findMany({
+      where: { deletedAt: null },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    });
+  },
 };

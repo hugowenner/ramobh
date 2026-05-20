@@ -1,73 +1,150 @@
 @import "tailwindcss";
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   RAMO DESIGN SYSTEM — globals.css
+   Fonte de verdade de cores e tokens visuais da plataforma.
+
+   Estrutura:
+   1. @theme inline  — mapeia CSS vars → utilities Tailwind (bg-*, text-*, etc.)
+   2. :root          — define os valores reais dos tokens
+   3. .dark          — overrides para modo escuro (futuro)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
+  /* ── Ramo brand tokens → Tailwind utilities ──────────────────────────────
+     Uso: bg-ramo-primary, text-ramo-secondary, border-ramo-border, etc.
+     Suporta modificadores de opacidade: bg-ramo-primary/10, etc.           */
+  --color-ramo-primary:         var(--ramo-primary);
+  --color-ramo-primary-dark:    var(--ramo-primary-dark);
+  --color-ramo-primary-light:   var(--ramo-primary-light);
+  --color-ramo-secondary:       var(--ramo-secondary);
+  --color-ramo-secondary-dark:  var(--ramo-secondary-dark);
+  --color-ramo-secondary-light: var(--ramo-secondary-light);
+  --color-ramo-bg:              var(--ramo-bg);
+  --color-ramo-surface:         var(--ramo-surface);
+  --color-ramo-border:          var(--ramo-border);
+  --color-ramo-text:            var(--ramo-text);
+  --color-ramo-muted:           var(--ramo-muted);
+  --color-ramo-success:         var(--ramo-success);
+  --color-ramo-warning:         var(--ramo-warning);
+  --color-ramo-error:           var(--ramo-error);
+
+  /* ── shadcn/ui semantic tokens — apontam para Ramo ──────────────────────
+     Todos os componentes shadcn (Button, Badge, Input, Card…) herdam
+     automaticamente a identidade Ramo sem precisar alterar nenhum deles.   */
+  --color-background:           var(--background);
+  --color-foreground:           var(--foreground);
+  --color-card:                 var(--card);
+  --color-card-foreground:      var(--card-foreground);
+  --color-popover:              var(--popover);
+  --color-popover-foreground:   var(--popover-foreground);
+  --color-primary:              var(--primary);
+  --color-primary-foreground:   var(--primary-foreground);
+  --color-secondary:            var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: var(--destructive);
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
+  --color-muted:                var(--muted);
+  --color-muted-foreground:     var(--muted-foreground);
+  --color-accent:               var(--accent);
+  --color-accent-foreground:    var(--accent-foreground);
+  --color-destructive:          var(--destructive);
+  --color-border:               var(--border);
+  --color-input:                var(--input);
+  --color-ring:                 var(--ring);
+
+  /* ── Radius ──────────────────────────────────────────────────────────── */
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   :root — valores reais dos tokens
+   REGRA: nunca usar hex hardcoded fora deste bloco.
+   ═══════════════════════════════════════════════════════════════════════════ */
 :root {
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --radius: 0.5rem;
+
+  /* ── Ramo Palette ────────────────────────────────────────────────────── */
+
+  /* Primária — azul corporativo (confiança / tecnologia) */
+  --ramo-primary:         #1F4B99;
+  --ramo-primary-dark:    #16386F;
+  --ramo-primary-light:   #2F6FE0;
+
+  /* Secundária — verde operacional (crescimento / ação) */
+  --ramo-secondary:       #18A999;
+  --ramo-secondary-dark:  #0F7C72;
+  --ramo-secondary-light: #3BD3C6;
+
+  /* Neutros */
+  --ramo-bg:              #F6F8FC;
+  --ramo-surface:         #FFFFFF;
+  --ramo-border:          #E5EAF2;
+  --ramo-text:            #1C2430;
+  --ramo-muted:           #6B7280;
+
+  /* Estados */
+  --ramo-success:         #22C55E;
+  --ramo-warning:         #F59E0B;
+  --ramo-error:           #EF4444;
+
+  /* ── shadcn/ui tokens — mapeados para Ramo ───────────────────────────── */
+  --background:           var(--ramo-bg);
+  --foreground:           var(--ramo-text);
+
+  --card:                 var(--ramo-surface);
+  --card-foreground:      var(--ramo-text);
+
+  --popover:              var(--ramo-surface);
+  --popover-foreground:   var(--ramo-text);
+
+  /* primary = azul Ramo; texto sobre primary sempre branco */
+  --primary:              var(--ramo-primary);
+  --primary-foreground:   #FFFFFF;
+
+  /* secondary = tint suave do primário (botões ghost, badges neutros) */
+  --secondary:            #EDF1F9;
+  --secondary-foreground: var(--ramo-primary);
+
+  --muted:                #EDF1F9;
+  --muted-foreground:     var(--ramo-muted);
+
+  --accent:               var(--ramo-primary-light);
+  --accent-foreground:    #FFFFFF;
+
+  --destructive:          var(--ramo-error);
+
+  --border:               var(--ramo-border);
+  --input:                var(--ramo-border);
+  --ring:                 var(--ramo-primary);
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   .dark — modo escuro (conservador, pode ser expandido por produto)
+   ═══════════════════════════════════════════════════════════════════════════ */
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
+  --background:           oklch(0.145 0 0);
+  --foreground:           oklch(0.985 0 0);
+  --card:                 oklch(0.205 0 0);
+  --card-foreground:      oklch(0.985 0 0);
+  --popover:              oklch(0.205 0 0);
+  --popover-foreground:   oklch(0.985 0 0);
+  --primary:              var(--ramo-primary-light);
+  --primary-foreground:   #FFFFFF;
+  --secondary:            oklch(0.269 0 0);
   --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+  --muted:                oklch(0.269 0 0);
+  --muted-foreground:     oklch(0.708 0 0);
+  --accent:               var(--ramo-primary);
+  --accent-foreground:    #FFFFFF;
+  --destructive:          var(--ramo-error);
+  --border:               oklch(1 0 0 / 10%);
+  --input:                oklch(1 0 0 / 15%);
+  --ring:                 var(--ramo-primary-light);
 }
 
+/* ── Reset base ──────────────────────────────────────────────────────────── */
 * {
   border-color: var(--border);
 }
@@ -75,4 +152,23 @@
 body {
   background-color: var(--background);
   color: var(--foreground);
+}
+
+/* ── App Shell background — textura sutil enterprise SaaS ───────────────────
+   Aplicada via classe .app-bg no main content do dashboard layout.
+   Dot grid muito suave — não interfere na legibilidade.
+   Dark mode: a textura desaparece naturalmente pois o contraste colapsa.
+   ─────────────────────────────────────────────────────────────────────────── */
+.app-bg {
+  background-color: var(--ramo-bg);
+  background-image: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--ramo-primary) 7%, transparent) 1px,
+    transparent 1px
+  );
+  background-size: 22px 22px;
+}
+
+.dark .app-bg {
+  background-image: none;
 }

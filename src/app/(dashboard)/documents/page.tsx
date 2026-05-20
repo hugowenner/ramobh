@@ -11,6 +11,7 @@ import { DocumentTable } from "@/modules/documents/components/document-table";
 import { DocumentFilters } from "@/modules/documents/components/document-filters";
 import { documentService } from "@/modules/documents/services/document.service";
 import { templateService } from "@/modules/templates/services/template.service";
+import { clientService } from "@/modules/clients/services/client.service";
 import { PAGE_SIZE } from "@/modules/documents/constants";
 
 export const metadata: Metadata = {
@@ -36,14 +37,16 @@ export default async function DocumentsPage({
   const params = await searchParams;
   const page = Math.max(1, Number(params.page) || 1);
   const search = params.search?.trim() || undefined;
-  const status = params.status || undefined;   // validated by Zod in service
+  const status = params.status || undefined;
   const templateId = params.templateId || undefined;
   const clientId = params.clientId || undefined;
   const projectId = params.projectId || undefined;
 
-  const [result, activeTemplates] = await Promise.all([
+  // Todas as queries em paralelo — 1 round-trip para o DB
+  const [result, activeTemplates, clients] = await Promise.all([
     documentService.list({ search, status, templateId, clientId, projectId, page, limit: LIMIT }),
     templateService.listActive(),
+    clientService.listForSelect(),
   ]);
 
   const templateOptions = activeTemplates.map((t) => ({
@@ -67,9 +70,11 @@ export default async function DocumentsPage({
       <Suspense fallback={<FiltersSkeleton />}>
         <DocumentFilters
           templates={templateOptions}
+          clients={clients}
           defaultSearch={params.search ?? ""}
           defaultStatus={params.status ?? ""}
           defaultTemplateId={params.templateId ?? ""}
+          defaultClientId={params.clientId ?? ""}
         />
       </Suspense>
 
@@ -106,6 +111,7 @@ function FiltersSkeleton() {
       <Skeleton className="h-9 w-64" />
       <Skeleton className="h-9 w-44" />
       <Skeleton className="h-9 w-52" />
+      <Skeleton className="h-9 w-48" />
     </div>
   );
 }

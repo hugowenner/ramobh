@@ -37,17 +37,17 @@ const ROLE_LABELS: Record<string, string> = {
 export function UserMenu({ name, email, role }: Props) {
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-slate-100 transition-colors outline-none">
+      <DropdownMenuTrigger className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-ramo-bg transition-colors outline-none">
         <Avatar className="h-7 w-7">
-          <AvatarFallback className="bg-slate-200 text-slate-700 text-xs font-medium">
+          <AvatarFallback className="bg-ramo-primary/15 text-ramo-primary text-xs font-semibold">
             {getInitials(name)}
           </AvatarFallback>
         </Avatar>
         <div className="hidden text-left sm:block">
-          <p className="text-sm font-medium text-slate-900 leading-none">
+          <p className="text-sm font-medium text-ramo-text leading-none">
             {name ?? "Usuário"}
           </p>
-          <p className="mt-0.5 text-xs text-slate-500 leading-none">
+          <p className="mt-0.5 text-xs text-ramo-muted leading-none">
             {ROLE_LABELS[role] ?? role}
           </p>
         </div>
@@ -56,8 +56,8 @@ export function UserMenu({ name, email, role }: Props) {
       <DropdownMenuContent align="end" className="w-56">
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col gap-1">
-            <p className="text-sm font-medium">{name}</p>
-            <p className="text-xs text-slate-500">{email}</p>
+            <p className="text-sm font-medium text-ramo-text">{name}</p>
+            <p className="text-xs text-ramo-muted">{email}</p>
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { auth } from "@/core/auth/config";
+import { prisma } from "@/core/database/client";
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Building2, FolderKanban, FileStack, FileText } from "lucide-react";
@@ -8,36 +9,56 @@ export const metadata: Metadata = {
   title: "Dashboard",
 };
 
-const stats = [
-  {
-    label: "Clientes",
-    value: "—",
-    icon: Building2,
-    description: "Clientes cadastrados",
-  },
-  {
-    label: "Projetos Ativos",
-    value: "—",
-    icon: FolderKanban,
-    description: "Em andamento",
-  },
-  {
-    label: "Documentos",
-    value: "—",
-    icon: FileStack,
-    description: "Total de documentos",
-  },
-  {
-    label: "Templates",
-    value: "—",
-    icon: FileText,
-    description: "Templates ativos",
-  },
-];
-
 export default async function DashboardPage() {
   const session = await auth();
   const firstName = session?.user?.name?.split(" ")[0] ?? "Bem-vindo";
+
+  // 4 counts em paralelo — 1 round-trip para o banco
+  const [totalClients, activeProjects, totalDocuments, activeTemplates] =
+    await Promise.all([
+      prisma.client.count({
+        where: { deletedAt: null },
+      }),
+      prisma.project.count({
+        where: {
+          deletedAt: null,
+          status: { notIn: ["COMPLETED", "CANCELLED"] },
+        },
+      }),
+      prisma.document.count({
+        where: { deletedAt: null },
+      }),
+      prisma.template.count({
+        where: { deletedAt: null, isActive: true },
+      }),
+    ]);
+
+  const stats = [
+    {
+      label: "Clientes",
+      value: totalClients,
+      icon: Building2,
+      description: "Clientes cadastrados",
+    },
+    {
+      label: "Projetos Ativos",
+      value: activeProjects,
+      icon: FolderKanban,
+      description: "Em andamento",
+    },
+    {
+      label: "Documentos",
+      value: totalDocuments,
+      icon: FileStack,
+      description: "Total de documentos",
+    },
+    {
+      label: "Templates",
+      value: activeTemplates,
+      icon: FileText,
+      description: "Templates ativos",
+    },
+  ];
 
   return (
     <div className="space-y-6">
@@ -51,16 +72,16 @@ export default async function DashboardPage() {
         {stats.map((stat) => (
           <Card key={stat.label}>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-slate-500">
+              <CardTitle className="text-sm font-medium text-ramo-muted">
                 {stat.label}
               </CardTitle>
-              <stat.icon className="h-4 w-4 text-slate-400" />
+              <stat.icon className="h-4 w-4 text-ramo-primary" />
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-semibold text-slate-900">
+              <p className="text-2xl font-semibold text-ramo-text tabular-nums">
                 {stat.value}
               </p>
-              <p className="mt-1 text-xs text-slate-400">{stat.description}</p>
+              <p className="mt-1 text-xs text-ramo-muted">{stat.description}</p>
             </CardContent>
           </Card>
         ))}
@@ -69,12 +90,12 @@ export default async function DashboardPage() {
       {/* Atividade recente — placeholder */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base font-semibold text-slate-900">
+          <CardTitle className="text-base font-semibold text-ramo-text">
             Atividade Recente
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-ramo-muted">
             Histórico de atividades disponível na próxima etapa.
           </p>
         </CardContent>

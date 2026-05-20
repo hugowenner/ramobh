@@ -3,6 +3,7 @@ import { NotFoundError, ValidationError } from "@/core/errors";
 import { documentRepository } from "../repositories/document.repository";
 import { mapDetailDTO, mapEditDefaults, parseSchemaSnapshot } from "./document.parser";
 import { templateService } from "@/modules/templates/services/template.service";
+import { getTemplateVersion } from "@/modules/templates/utils/schema";
 import { assertDocumentDataValid } from "../validators";
 import { DOCUMENT_STATUS_TRANSITIONS } from "../constants";
 import {
@@ -113,7 +114,7 @@ export const documentService = {
     // 3. Persist with immutable schemaSnapshot
     const row = await documentRepository.create({
       title: parsed.title,
-      templateVersion: template.schema.version,
+      templateVersion: getTemplateVersion(template.schema),
       schemaSnapshot: template.schema as unknown as Prisma.InputJsonValue,
       data: parsed.data as unknown as Prisma.InputJsonValue,
       status: parsed.status,

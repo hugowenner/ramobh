@@ -5,7 +5,7 @@ export function CardSkeleton({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "rounded-xl border border-slate-200 bg-white p-6",
+        "rounded-xl border border-ramo-border bg-ramo-surface p-6",
         className
       )}
     >
@@ -17,7 +17,7 @@ export function CardSkeleton({ className }: { className?: string }) {
 
 export function TableRowSkeleton({ cols = 4 }: { cols?: number }) {
   return (
-    <div className="flex items-center gap-4 border-b border-slate-100 py-3 px-4">
+    <div className="flex items-center gap-4 border-b border-ramo-border py-3 px-4">
       {Array.from({ length: cols }).map((_, i) => (
         <Skeleton key={i} className="h-4 flex-1" />
       ))}

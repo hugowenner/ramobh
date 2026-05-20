@@ -16,25 +16,30 @@ import { useDebouncedCallback } from "use-debounce";
 import { DOCUMENT_STATUS_LABELS } from "../constants";
 import { DocumentStatus } from "@/generated/prisma";
 
-type TemplateOption = { id: string; name: string };
+type Option = { id: string; name: string };
 
 type Props = {
-  templates: TemplateOption[];
+  templates: Option[];
+  clients: Option[];
   defaultSearch?: string;
   defaultStatus?: string;
   defaultTemplateId?: string;
+  defaultClientId?: string;
 };
 
 export function DocumentFilters({
   templates,
+  clients,
   defaultSearch = "",
   defaultStatus = "",
   defaultTemplateId = "",
+  defaultClientId = "",
 }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
+  // Atualiza apenas as chaves fornecidas, preserva todas as demais
   const push = useCallback(
     (updates: Record<string, string>) => {
       const params = new URLSearchParams(searchParams.toString());
@@ -45,6 +50,7 @@ export function DocumentFilters({
           params.delete(key);
         }
       }
+      // Resetar paginação ao mudar qualquer filtro
       params.delete("page");
       router.push(`${pathname}?${params.toString()}`);
     },
@@ -56,12 +62,14 @@ export function DocumentFilters({
     400
   );
 
-  // undefined = "no filter active" — single canonical absence value
+  // undefined = sem filtro ativo — valor canônico de ausência
   const activeStatus: string | undefined = defaultStatus || undefined;
   const activeTemplateId: string | undefined = defaultTemplateId || undefined;
+  const activeClientId: string | undefined = defaultClientId || undefined;
 
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:flex-wrap">
+      {/* Busca por título */}
       <Input
         placeholder="Buscar por título..."
         defaultValue={defaultSearch}
@@ -69,6 +77,7 @@ export function DocumentFilters({
         className="sm:max-w-xs"
       />
 
+      {/* Filtro: status */}
       <div className="flex items-center gap-1">
         <Select
           value={activeStatus}
@@ -100,6 +109,7 @@ export function DocumentFilters({
         )}
       </div>
 
+      {/* Filtro: template */}
       {templates.length > 0 && (
         <div className="flex items-center gap-1">
           <Select
@@ -126,6 +136,40 @@ export function DocumentFilters({
               className="h-8 w-8 shrink-0"
               onClick={() => push({ templateId: "" })}
               aria-label="Limpar filtro de template"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+      )}
+
+      {/* Filtro: cliente */}
+      {clients.length > 0 && (
+        <div className="flex items-center gap-1">
+          <Select
+            value={activeClientId}
+            onValueChange={(v) => push({ clientId: v })}
+          >
+            <SelectTrigger className="sm:w-[200px]">
+              <SelectValue placeholder="Todos os clientes" />
+            </SelectTrigger>
+            <SelectContent>
+              {clients.map((c) => (
+                <SelectItem key={c.id} value={c.id}>
+                  {c.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {activeClientId && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 shrink-0"
+              onClick={() => push({ clientId: "" })}
+              aria-label="Limpar filtro de cliente"
             >
               <X className="h-4 w-4" />
             </Button>

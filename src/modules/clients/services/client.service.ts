@@ -64,4 +64,9 @@ export const clientService = {
     if (!existing) throw new NotFoundError("Cliente");
     await clientRepository.softDelete(id);
   },
+
+  /** Lista todos os clientes ativos como opções para selects (id + name). */
+  async listForSelect(): Promise<{ id: string; name: string }[]> {
+    return clientRepository.findAllForSelect();
+  },
 };
